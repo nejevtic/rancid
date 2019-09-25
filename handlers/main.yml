@@ -1,0 +1,9 @@
+---
+
+- name: newaliases
+  shell: /usr/bin/newaliases
+
+- name: reload_postfix
+  service:
+    name: postfix
+    state: reloaded

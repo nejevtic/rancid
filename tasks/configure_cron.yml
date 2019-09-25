@@ -1,0 +1,34 @@
+---
+
+- name: Configure Rancid script
+  template:
+    src: rancid_run.sh.j2
+    dest: "{{ rancid_base_dir }}/rancid_run.sh"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_user }}"
+    mode: 0775
+  tags:
+    - configure_cron
+
+- name: Remove lines in cron file
+  lineinfile:
+    path: /etc/cron.d/rancid
+    regexp: "{{ item }}"
+    state: absent
+  with_items:
+    - ".* rancid /usr/libexec/rancid/rancid-run"
+    - "# Run config differ hourly"
+  tags:
+    - configure_cron
+
+- name: Configure Rancid Cron
+  cron:
+    name: "Rancid"
+    minute: "{{ item.value.minute }}"
+    hour: "{{ item.value.hour }}"
+    user: "{{ rancid_local_user }}"
+    job: "{{ rancid_base_dir }}/rancid_run.sh"
+    cron_file: "rancid"
+  with_dict: "{{ rancid_cron }}"
+  tags:
+    - configure_cron

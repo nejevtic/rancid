@@ -1,0 +1,6 @@
+---
+
+- include: configure_rancid.yml
+- include: configure_git.yml
+- include: configure_mail.yml
+- include: configure_cron.yml

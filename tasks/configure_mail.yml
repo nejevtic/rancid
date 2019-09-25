@@ -1,0 +1,66 @@
+---
+
+- name: Configure email aliases and add group email to /etc/aliases
+  lineinfile:
+    dest: "/etc/aliases"
+    regexp: "^rancid-{{ item.0.name }}.*"
+    line: "rancid-{{ item.0.name }}{{ ':' }}\t{{ item.1.name }}"
+    state: present
+  notify: newaliases
+  with_subelements:
+    - "{{ rancid_groups_mail }}"
+    - mail
+  when: item.0 is defined and item.1.name is defined
+  tags:
+    - configure_mail
+
+- name: Configure email aliases and add group email to /etc/aliases
+  lineinfile:
+    dest: "/etc/aliases"
+    regexp: "^rancid-admin-{{ item.0.name }}.*"
+    line: "rancid-admin-{{ item.0.name }}{{ ':' }}\t{{ item.1.name }}"
+    state: present
+  notify: newaliases
+  with_subelements:
+    - "{{ rancid_groups_mail }}"
+    - mail
+  when: item.0 is defined and item.1.name is defined
+  tags:
+    - configure_mail
+
+- name: Install or remove Sendmail
+  yum:
+    name: sendmail
+    state: "{{ rancid_configure_sendmail | ternary('present','absent','absent') }}"
+  tags:
+    - configure_mail
+
+- name: Install Postfix
+  yum:
+    name: postfix
+    state: "{{ rancid_configure_postfix | ternary('present','absent','absent') }}"
+  tags:
+    - configure_mail
+
+- name: Configure Postfix
+  lineinfile:
+    state: present
+    dest: /etc/postfix/main.cf
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  with_items:
+    - { regexp: "^#?relayhost = ", line: "relayhost = {{ rancid_relayhost }}" }
+    - { regexp: "^inet_interfaces = ", line: "inet_interfaces = all" }
+  notify: reload_postfix
+  when: rancid_configure_postfix
+  tags:
+    - configure_mail
+
+- name: Start and enable postfix
+  service:
+    name: postfix
+    enabled: yes
+    state: started
+  when: rancid_configure_postfix
+  tags:
+    - configure_mail

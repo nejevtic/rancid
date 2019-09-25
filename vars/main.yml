@@ -1,0 +1,5 @@
+---
+
+rancid_base_dir: /var/rancid
+rancid_local_user: rancid
+rancid_local_usergroup: rancid

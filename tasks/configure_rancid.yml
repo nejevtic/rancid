@@ -1,0 +1,117 @@
+---
+- name: Install Rancid
+  yum:
+    name: "{{ rancid_packages }}"
+    state: latest
+  register: rancid_install
+  tags:
+    - configure_rancid
+
+- name: Create .ssh folder for Rancid user
+  file:
+    path: "{{ rancid_base_dir }}/.ssh"
+    state: directory
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_usergroup }}"
+    mode: 0700
+  tags:
+    - configure_user
+
+- name: Install SSH public key for Rancid user
+  copy:
+    content: |
+      {{ rancid_ssh_public_key }}
+    dest: "{{ rancid_base_dir }}/.ssh/id_rsa.pub"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_usergroup }}"
+    mode: 0640
+  when: rancid_ssh_public_key is defined
+  tags:
+    - configure_user
+
+- name: Install SSH private key for Rancid user
+  copy:
+    content: |
+      {{ rancid_ssh_private_key }}
+    dest: "{{ rancid_base_dir }}/.ssh/id_rsa"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_usergroup }}"
+    mode: 0400
+  when: rancid_ssh_private_key is defined
+  tags:
+    - configure_user
+
+- name: Generate SSH keys for Rancid user
+  user:
+    name: "{{ rancid_local_user }}"
+    generate_ssh_key: yes
+  when: rancid_ssh_private_key is not defined
+  tags:
+    - configure_user
+
+- name: Ensuring Rancid user has ownership of Rancid directory
+  file:
+    path: "{{ rancid_base_dir }}"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_usergroup }}"
+    state: directory
+    recurse: yes
+  tags:
+    - configure_user
+
+- name: Configure Rancid
+  template:
+    src: "etc/rancid/rancid.conf.j2"
+    dest: "/etc/rancid/rancid.conf"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_usergroup }}"
+    mode: 0644
+  register: rancid_config
+  tags:
+    - configure_rancid
+
+- name: Make sure device group repositories exist
+  shell: "git init --bare {{ rancid_base_dir }}/CVS/{{ item.key }}"
+  become_user: "{{ rancid_local_user }}"
+  changed_when: false
+  with_dict: "{{ rancid_group_devices }}"
+  tags:
+    - configure_rancid
+
+- name: Initialize Rancid directories
+  shell: "rancid-cvs"
+  become_user: "{{ rancid_local_user }}"
+  when: rancid_install.changed or rancid_config.changed
+  tags:
+    - configure_rancid
+
+- name: Template Rancid device lists
+  template:
+    src: router.db.j2
+    dest: "{{ rancid_base_dir }}/{{ item.key }}/router.db"
+  with_dict: "{{ rancid_group_devices }}"
+  tags:
+    - configure_rancid
+
+- name: Template Rancid cloginrc
+  template:
+    src: cloginrc.j2
+    dest: "{{ rancid_base_dir }}/.cloginrc"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_usergroup }}"
+    mode: 0600
+  tags:
+    - configure_rancid
+
+- name: Customize juniper type to fetch only display set
+  blockinfile:
+    path: /etc/rancid/rancid.types.conf
+    block: |
+      juniper-srx-dset;script;rancid -t juniper-dset
+      juniper-srx-dset;login;jlogin
+      juniper-srx-dset;module;junos
+      juniper-srx-dset;inloop;junos::inloop
+      juniper-srx-dset;command;junos::ShowConfiguration;show configuration | display set | no-more
+  tags:
+    - configure_rancid
+

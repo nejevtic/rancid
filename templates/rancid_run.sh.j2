@@ -1,0 +1,12 @@
+#!/bin/bash
+/usr/bin/rancid-run
+/usr/share/rancid/downreport
+
+rsync -zrvh {{ rancid_base_dir }}/*/configs/* {{ rancid_git_dir}}
+
+timestamp=$(date +%D_%T)
+cd {{ rancid_git_dir }}
+git pull origin master
+git add .
+git commit -am "Rancid Auto-Git $timestamp"
+git push origin master

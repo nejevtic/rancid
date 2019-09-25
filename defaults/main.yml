@@ -1,0 +1,93 @@
+---
+rancid_local_user_mail: '{{ rancid_local_user }}@{{ rancid_domain_name }}'
+rancid_mailheaders: "Precedence: bulk"
+rancid_relayhost: "relay.example.com"
+rancid_configure_postfix: true
+rancid_configure_sendmail: false
+rancid_mail_notifications: "rancid@localhost"
+rancid_domain_name: "example.com"
+rancid_git_user: rancid
+rancid_git_mail: "{{ rancid_git_user }}@{{ rancid_domain_name }}"
+rancid_git_remote: "git@{{ rancid_git_server }}:random/path.git"
+rancid_git_server: "git.{{ rancid_domain_name }}"
+rancid_git_dir: "{{ rancid_base_dir }}/git_repo"
+
+# Username and password used to login remotely:
+rancid_login_user: rancid
+rancid_login_password: password
+#rancid_login_enable_password: password
+
+rancid_cron:
+  schedule:
+    minute: "*/30"
+    hour: "*"
+
+rancid_packages:
+   - rancid
+   - cronie
+   - rsync
+
+rancid_group_devices:
+  firewalls:
+    - name: "firewall1.example.com"
+      type: fortigate
+      state: up
+  routers:
+    - name: "router1.example.com"
+      type: cisco
+      state: up
+  switches:
+    - name: "switch1.example.com"
+      type: cisco
+      state: up
+
+rancid_groups_mail:
+  - name: firewalls
+    mail:
+      - name: "{{ rancid_mail_notifications }}"
+  - name: routers
+    mail:
+      - name: "{{ rancid_mail_notifications }}"
+  - name: switches
+    mail:
+      - name: "{{ rancid_mail_notifications }}"
+
+# Define these to have SSH keys
+# rancid_ssh_private_key: |
+#   -----BEGIN RSA PRIVATE KEY-----
+#   MIIEowIBAAKCAQEA1XH4wdGFTvHuK1lJmiJ5AykX3fj5GPZhDK+VXzBSgR92fMM2
+#   QzqDFve080lE4FI1okgH69AXx66TrHR1JsMPBGmgdDdct2VxiPi+EwDF2M7MiIgP
+#   9Gj88QKBgFNZJUzn4WzB/923eiiGQxMJsU9HLPnw9R6ar3MIq8CyhR5iUFhNHtmt
+#   rsJcNAsWiPXnHJVDNA8n1St1K+EFeO1h+l7UI/bu5W3MM+8y+frR1we/hNmNJta5
+#   uCPWNt3r4EwvWu6xZKwdJfLMHTsEErwes5H1P7qKJIHo983uyoOZ
+#   -----END RSA PRIVATE KEY-----
+#
+# rancid_ssh_public_key: |
+#   ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDVcfjB0YVO8e4rWUm
+
+# In case multple git remotes need to be used uncomment the following section:
+#rancid_git_remotes:
+#  - name: origin
+#    hostname: "{{ rancid_git_server }}"
+#    host_key: "{{ rancid_git_server }} ssh-rsa AAAAB3Nza..."
+#    url: "git@{{ rancid_git_server }}:ops/rancid.git"
+
+# If more granular clogin is needed then uncommet following section and use extended clogin template file instead of simple clogin template used now
+#rancid_clogin:
+#  - directive: method
+#    glob: "*"
+#    values:
+#      - ssh
+#  - directive: method
+#    glob: "*"
+#    values:
+#      - aes256-cbc
+#  - directive: autoenable
+#    glob: "c*"
+#    values:
+#      - "1"
+#  - directive: password
+#    glob: "*"
+#    values:
+#      - "{{ rancid_password }}"
+#      - "{{ rancid_enable_password }}"

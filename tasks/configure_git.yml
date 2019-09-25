@@ -1,0 +1,99 @@
+---
+
+- name:  Configuring Git remote
+  git:
+    repo: "{{ rancid_git_remote }}"
+    dest: "{{ rancid_git_dir }}"
+    update: no
+    clone: yes
+    accept_hostkey: yes
+    key_file: "{{ rancid_base_dir }}/.ssh/id_rsa"
+  become_user: "{{ rancid_local_user }}"
+  register: remote_git_configured
+  tags:
+    - configure_rancid
+- name: Configure Git
+  template:
+    src: "gitconfig.j2"
+    dest: "{{ rancid_git_dir }}/.gitconfig"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_user }}"
+    mode: 0664
+  tags:
+    - configure_rancid
+
+- name: List current git remotes
+  command: >
+    git remote
+    chdir={{ rancid_git_dir }}
+  register: current_git_remotes
+  changed_when: false
+  when: remote_git_configured.remote_url_changed is defined
+  tags:
+    - configure_rancid
+
+- name: Add host keys to known_hosts
+  known_hosts:
+    name: "{{ item.hostname }}"
+    state: present
+    key: "{{ item.host_key }}"
+  with_items: "{{ rancid_git_remotes }}"
+  when: rancid_git_remotes is defined
+  tags:
+    - configure_rancid
+
+- name:  Create Rancid link for GIT repo
+  file:
+    dest: "{{ rancid_base_dir }}/rancid_git"
+    src: "{{ rancid_git_dir }}/.git"
+    owner: "{{ rancid_local_user }}"
+    group: "{{ rancid_local_user }}"
+    state: link
+  ignore_errors: "{{ ansible_check_mode }}"
+  tags:
+    - configure_rancid
+
+# If there is a need to automate Rancid user login to Gitlab and therefore copy ssh key start with following
+#- name: Copy public key to Git
+#  shell: 'cat {{ rancid_base_dir }}/.ssh/id_rsa.pub | ssh {{ rancid_git_user }}@{{ rancid_git_server }} "cat - >> ~/.ssh/authorized_keys"'
+#  register: copied_to_aythorized_keys
+#
+
+# In case multple git remotes need to be used uncomment the following section to add multiple git remotes
+#- name: Add git remotes
+#  command: >
+#    git remote add {{ item.name }} {{ item.url }}
+#    chdir={{ rancid_git_dir }}
+#  become_user: "{{ rancid_git_user }}"
+#  with_items: "{{ rancid_git_remotes }}"
+#  when: rancid_git_remotes is defined and current_git_remotes is defined and item.name not in current_git_remotes.stdout_lines
+#  tags:
+#    - configure_rancid
+#
+#- name: Convert rancid_git_remotes.name into a list
+#  set_fact:
+#    git_remote_list: "{{ rancid_git_remotes | default('') | map(attribute = 'name') | list }}"
+#  tags:
+#    - configure_rancid
+#
+#- name: Remove git remotes
+#  command: >
+#    git remote rm {{ item }}
+#    chdir={{ rancid_git_dir }}
+#  become_user: {{ rancid_git_user }}
+#  with_items: "{{ current_git_remotes.stdout_lines }}"
+#  when: item not in git_remote_list
+#  tags:
+#    - configure_rancid
+#
+#- name: Push to git remotes
+#  command: >
+#    git push {{ item.name }} master
+#    chdir={{ rancid_git_dir }}
+#  register: push_status
+#  changed_when: "item.url in push_status.stderr"
+#  become_user: "{{ rancid_git_user }}"
+#  with_items: "{{ rancid_git_remotes }}"
+#  when: rancid_git_remotes is defined
+#  tags:
+#    - configure_rancid
